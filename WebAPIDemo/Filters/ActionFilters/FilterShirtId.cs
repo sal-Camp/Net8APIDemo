@@ -1,11 +1,14 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using WebAPIDemo.Data;
 using WebAPIDemo.Models.Repositories;
 
-namespace WebAPIDemo.Filters;
+namespace WebAPIDemo.Filters.ActionFilters;
 
-public class FilterShirtId : ActionFilterAttribute
+public class FilterShirtId(ApplicationDbContext db) : ActionFilterAttribute
 {
+    private readonly ApplicationDbContext _db = db;
+
     public override void OnActionExecuting(ActionExecutingContext context)
     {
         base.OnActionExecuting(context);
@@ -21,14 +24,24 @@ public class FilterShirtId : ActionFilterAttribute
                 };
                 context.Result = new BadRequestObjectResult(problemDetails);
             }
-            else if (!ShirtRepository.ShirtExists(shirtId))
+            else
             {
-                context.ModelState.AddModelError("ShirtId", "Shirt doesn't exist.");
-                ValidationProblemDetails problemDetails = new(context.ModelState)
+                var shirt = _db.Shirts.Find(shirtId);
+
+                if (shirt is null)
                 {
-                    Status = StatusCodes.Status404NotFound
-                };
-                context.Result = new NotFoundObjectResult(problemDetails);
+                    context.ModelState.AddModelError("ShirtId", "Shirt doesn't exist.");
+                    ValidationProblemDetails problemDetails = new(context.ModelState)
+                    {
+                        Status = StatusCodes.Status404NotFound
+                    };
+                    context.Result = new NotFoundObjectResult(problemDetails);
+                }
+                else
+                {
+                    // Return found object up to HttpContext
+                    context.HttpContext.Items["shirt"] = shirt;
+                }
             }
         }
     }

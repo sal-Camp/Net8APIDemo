@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WebAPIDemo.Data;
 using WebAPIDemo.Filters;
+using WebAPIDemo.Filters.ActionFilters;
 using WebAPIDemo.Filters.ExceptionFilters;
 using WebAPIDemo.Models;
 using WebAPIDemo.Models.Repositories;
@@ -8,46 +10,60 @@ namespace WebAPIDemo.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ShirtsController : ControllerBase
+public class ShirtsController(ApplicationDbContext db) : ControllerBase
 {
+    private readonly ApplicationDbContext _db = db;
+
     [HttpGet]
     public IActionResult GetShirts()
     {
-        return Ok(ShirtRepository.GetShirts());
+        return Ok(db.Shirts.ToList());
     }
 
     [HttpGet("{id:int}")]
-    [FilterShirtId]
+    [TypeFilter(typeof(FilterShirtId))]
     public IActionResult GetShirtById(int id)
     {
-        return Ok(ShirtRepository.GetShirtById(id));
+        return Ok(HttpContext.Items["shirt"]);
     }
 
     [HttpPost]
-    [FilterCreateShirt]
+    [TypeFilter(typeof(FilterCreateShirt))]
     public IActionResult CreateShirt([FromBody] Shirt shirt)
     {
-        ShirtRepository.AddShirt(shirt);
+        this._db.Shirts.Add(shirt);
+        this._db.SaveChanges();
 
         return CreatedAtAction(nameof(GetShirtById), new { id = shirt.ShirtId }, shirt);
     }
 
     [HttpPut("{id:int}")]
-    [FilterShirtId]
+    [TypeFilter(typeof(FilterShirtId))]
     [FilterUpdateShirt]
-    [HandleUpdateExceptions]
+    [TypeFilter(typeof(HandleUpdateExceptions))]
     public IActionResult UpdateShirt(int id, Shirt shirt)
     {
-        ShirtRepository.UpdateShirt(shirt);
+        var shirtToUpdate = HttpContext.Items["shirt"] as Shirt;
+        // Should never be null because of FilterShirtId
+        shirtToUpdate.Brand = shirt.Brand;
+        shirtToUpdate.Price = shirt.Price;
+        shirtToUpdate.Size = shirt.Size;
+        shirtToUpdate.Color = shirt.Color;
+        shirtToUpdate.Gender = shirt.Gender;
+
+        db.SaveChanges();
+
         return NoContent();
     }
 
-    [FilterShirtId]
+    [TypeFilter(typeof(FilterShirtId))]
     [HttpDelete("{id:int}")]
     public IActionResult DeleteShirt(int id)
     {
-        var shirt = ShirtRepository.GetShirtById(id);
-        ShirtRepository.DeleteShirt(id);
-        return Ok(shirt);
+        var shirtToDelete = HttpContext.Items["shirt"] as Shirt;
+        db.Shirts.Remove(shirtToDelete);
+        db.SaveChanges();
+
+        return Ok(shirtToDelete);
     }
 }
