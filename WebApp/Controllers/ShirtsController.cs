@@ -108,5 +108,13 @@ public class ShirtsController : Controller
                 ModelState.AddModelError(error.Key, string.Join("; ", error.Value));
             }
         }
+        else if (e.ErrorResponse != null)
+        {
+            ModelState.AddModelError("Error", e.ErrorResponse.Title);
+        }
+        else
+        {
+            ModelState.AddModelError("Error", e.Message);
+        }
     }
 }
