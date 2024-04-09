@@ -24,9 +24,16 @@ public static class Authenticator
         var claims = new List<Claim>
         {
             new Claim("AppName", app?.ApplicationName ?? string.Empty),
-            new Claim("Read", (app?.Scopes??string.Empty).Contains("read")?"true":"false"),
-            new Claim("Write", (app?.Scopes??string.Empty).Contains("write")?"true":"false"),
         };
+
+        var scopes = app?.Scopes?.Split(",");
+        if (scopes is not null && scopes.Length > 0)
+        {
+            foreach (var scope in scopes)
+            {
+                claims.Add(new Claim(scope.ToLower(), "true"));
+            }
+        }
 
         var secretKey = Encoding.ASCII.GetBytes(strSecretKey);
 
@@ -43,9 +50,9 @@ public static class Authenticator
         return new JwtSecurityTokenHandler().WriteToken(jwt);
     }
 
-    public static bool VerifyToken(string token, string strSecretKey)
+    public static IEnumerable<Claim>? VerifyToken(string token, string strSecretKey)
     {
-        if (string.IsNullOrWhiteSpace(token)) return false;
+        if (string.IsNullOrWhiteSpace(token)) return null;
 
         if (token.StartsWith("Bearer"))
         {
@@ -69,16 +76,24 @@ public static class Authenticator
                     ClockSkew = TimeSpan.Zero
                 },
                 out securityToken);
+
+            if (securityToken is not null)
+            {
+                var tokenObject = tokenHandler.ReadJwtToken(token);
+                return tokenObject.Claims ?? (new List<Claim>());
+            }
+            else
+            {
+                return null;
+            }
         }
         catch (SecurityTokenException)
         {
-            return false;
+            return null;
         }
         catch
         {
             throw;
         }
-
-        return securityToken != null;
     }
 }

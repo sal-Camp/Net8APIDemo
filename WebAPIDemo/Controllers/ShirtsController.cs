@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WebAPIDemo.Attributes;
 using WebAPIDemo.Data;
 using WebAPIDemo.Filters;
 using WebAPIDemo.Filters.ActionFilters;
@@ -17,6 +18,7 @@ public class ShirtsController(ApplicationDbContext db) : ControllerBase
     private readonly ApplicationDbContext _db = db;
 
     [HttpGet]
+    [RequiredClaim("read", "true")]
     public IActionResult GetShirts()
     {
         return Ok(db.Shirts.ToList());
@@ -24,6 +26,7 @@ public class ShirtsController(ApplicationDbContext db) : ControllerBase
 
     [HttpGet("{id:int}")]
     [TypeFilter(typeof(FilterShirtId))]
+    [RequiredClaim("read", "true")]
     public IActionResult GetShirtById(int id)
     {
         return Ok(HttpContext.Items["shirt"]);
@@ -31,6 +34,7 @@ public class ShirtsController(ApplicationDbContext db) : ControllerBase
 
     [HttpPost]
     [TypeFilter(typeof(FilterCreateShirt))]
+    [RequiredClaim("write", "true")]
     public IActionResult CreateShirt([FromBody] Shirt shirt)
     {
         this._db.Shirts.Add(shirt);
@@ -43,6 +47,7 @@ public class ShirtsController(ApplicationDbContext db) : ControllerBase
     [TypeFilter(typeof(FilterShirtId))]
     [FilterUpdateShirt]
     [TypeFilter(typeof(HandleUpdateExceptions))]
+    [RequiredClaim("write", "true")]
     public IActionResult UpdateShirt(int id, Shirt shirt)
     {
         var shirtToUpdate = HttpContext.Items["shirt"] as Shirt;
@@ -60,6 +65,7 @@ public class ShirtsController(ApplicationDbContext db) : ControllerBase
 
     [TypeFilter(typeof(FilterShirtId))]
     [HttpDelete("{id:int}")]
+    [RequiredClaim("delete", "true")]
     public IActionResult DeleteShirt(int id)
     {
         var shirtToDelete = HttpContext.Items["shirt"] as Shirt;
